@@ -28,9 +28,10 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 # 필수 환경 변수 누락 여부 강도 높은 검증
-if not all([GOOGLE_API_KEY, OPENAI_API_KEY, SUPABASE_URL, SUPABASE_KEY]):
-    raise ValueError("서버 초기화 치명적 실패: 필수 환경 변수(GOOGLE_API_KEY, OPENAI_API_KEY, SUPABASE_URL, SUPABASE_KEY) 중 하나 이상이 누락되었습니다. 클라우드 환경 설정을 점검하십시오.")
-
+required_keys = ["GOOGLE_API_KEY", "OPENAI_API_KEY", "SUPABASE_URL", "SUPABASE_KEY"]
+missing_keys = [key for key in required_keys if not os.environ.get(key)]
+if missing_keys:
+    raise ValueError(f"서버 초기화 치명적 실패! 정확히 다음 변수가 누락되었습니다: {missing_keys}")
 try:
     # 벡트 DB 개발(Supabase) 클라이언트 초기화 및 오픈 AI 임베딩 모델 객체 생성
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
