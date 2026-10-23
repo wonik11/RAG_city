@@ -8,3 +8,5 @@ langchain-google-genai==0.0.6
 supabase==2.3.4
 PyPDF2==3.0.1
 python-dotenv==1.0.0
+SQLAlchemy==2.0.25
+requests==2.31.0
