@@ -1,5 +1,6 @@
 import os
 import io
+import uvicorn
 from typing import List, Dict
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,8 +33,9 @@ required_keys = ["GOOGLE_API_KEY", "OPENAI_API_KEY", "SUPABASE_URL", "SUPABASE_K
 missing_keys = [key for key in required_keys if not os.environ.get(key)]
 if missing_keys:
     raise ValueError(f"서버 초기화 치명적 실패! 정확히 다음 변수가 누락되었습니다: {missing_keys}")
+
 try:
-    # 벡트 DB 개발(Supabase) 클라이언트 초기화 및 오픈 AI 임베딩 모델 객체 생성
+    # 벡터 DB 개발(Supabase) 클라이언트 초기화 및 오픈 AI 임베딩 모델 객체 생성
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key=OPENAI_API_KEY)
 except Exception as e:
@@ -117,42 +119,37 @@ async def chat_endpoint(request: ChatRequest):
 
     try:
         # 1. 시스템 메시지 및 프롬프트 설계 & 3. Query Augmentation Chain 구성
-        # LLM에게 부여할 역할을 정의하고, 과거 대화 내역이 통째로 들어갈 동적 빈칸(MessagesPlaceholder)을 포함함.
         condense_prompt = ChatPromptTemplate.from_messages([
             ("system", "기존의 대화 내용을 활용하여 사용자가 질문한 의도를 파악해서 한문장의 명료한 질문으로 변환하라. 대명사나 이, 저, 그와 같은 표현을 명확한 명사로 표현하라."),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{query}")
         ])
         
-        # 질의 확장을 전담할 LLM 모델 객체 생성 (온도가 0.0이므로 안정적인 질문 추출)
+        # 질의 확장을 전담할 LLM 모델 객체 생성
         condense_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             temperature=0.0
         )
         
-        # 프롬프트 템플릿, LLM 객체, 일반 텍스트 파서를 하나로 파이프라인 연결
         query_augmentation_chain = condense_prompt | condense_llm | StrOutputParser()
         
-        # 4. 체인 실행 (데이터 주입)
+        # 4. 체인 실행
         if history_messages:
-            # 현재 사용자의 질문과 이전까지의 대화 기록(chat_history)을 딕셔너리로 주입하여 체인 invoke 실행
             augmented_query = query_augmentation_chain.invoke({
                 "chat_history": history_messages,
                 "query": request.query
             })
         else:
-            # 이전 대화가 없으면 원본 질의를 확장 질의로 그대로 사용
             augmented_query = request.query
 
     except Exception as aug_err:
         raise HTTPException(status_code=500, detail=f"질의 확장(Query Augmentation) 실행 실패: LLM을 이용해 이전 대화 문맥을 분석하는 도중 에러가 발생했습니다. 상세 원인: {str(aug_err)}")
 
     try:
-        # 5. 증강된 질의로 벡터 DB 검색 (Supabase 리트리버 개발 적용)
+        # 5. 증강된 질의로 벡터 DB 검색
         query_embedding = embeddings.embed_query(augmented_query)
         
-        # 임계값 0.7 이상인 문서 중 상위 5개를 가져오도록 RPC 함수 호출
         rpc_response = supabase.rpc(
             "match_document_chunks",
             {"query_embedding": query_embedding, "match_threshold": 0.7, "match_count": 5}
@@ -165,13 +162,11 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"벡터 리트리버 검색 실패: Supabase RPC를 호출해 유사도 검색을 수행하는 도중 데이터베이스 예외가 발생했습니다. 상세 원인: {str(db_search_err)}")
 
     try:
-        # 주어진 청크 기반하여 언어 모델로 답변을 생성하기 위한 시스템 메시지 구성
         rag_prompt = ChatPromptTemplate.from_messages([
             ("system", "너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n[문서 정보]\n{context}"),
             ("human", "{question}")
         ])
         
-        # 최종 답변을 담당할 LLM 모델 객체 생성 및 실시간 스트리밍 핸들러(streaming=True) 적용
         rag_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
@@ -181,18 +176,21 @@ async def chat_endpoint(request: ChatRequest):
         
         rag_chain = rag_prompt | rag_llm | StrOutputParser()
         
-        # 비동기 스트리밍 반환을 위한 제너레이터 함수 정의
         async def generate_stream():
             try:
-                # 딕셔너리로 검색된 컨텍스트와 증강된 질문을 함께 묶어서 주입
                 async for chunk in rag_chain.astream({"context": context_text, "question": augmented_query}):
                     yield chunk
             except Exception as stream_err:
-                # 스트리밍 청크 생성 중 에러가 발생한 경우 해당 내용 반환
                 yield f"\n\n[치명적 오류 발생: LLM 실시간 텍스트 생성 도중 네트워크 또는 API 에러가 반환되었습니다. 세부 로그: {str(stream_err)}]"
 
-        # 클라이언트가 실시간으로 수신할 수 있도록 text/event-stream 반환
         return StreamingResponse(generate_stream(), media_type="text/event-stream")
 
     except Exception as rag_err:
         raise HTTPException(status_code=500, detail=f"최종 응답 파이프라인 구성 실패: RAG 답변 체인을 결합하고 스트리밍 핸들러를 셋업하는 과정에서 에러가 발생했습니다. 상세 원인: {str(rag_err)}")
+
+# Cloud Run 배포를 위한 uvicorn 실행 블록 추가
+if __name__ == "__main__":
+    # Cloud Run 환경에서 제공하는 PORT 환경 변수를 사용하며, 기본값은 8080
+    port = int(os.environ.get("PORT", 8080))
+    # 외부 접근을 위해 host를 0.0.0.0으로 지정
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
