@@ -22,4 +22,4 @@ EXPOSE 8080
 
 # FastAPI 앱 실행 (main.py 파일의 app 객체를 실행한다고 가정)
 # 만약 파일명이 app.py라면 "app:app"으로 변경하세요.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
