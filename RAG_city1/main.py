@@ -47,7 +47,7 @@ app = FastAPI(title="도시 정책 RAG API 서버")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
