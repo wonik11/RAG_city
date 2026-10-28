@@ -130,6 +130,7 @@ async def chat_endpoint(request: ChatRequest):
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             temperature=0.0
+            convert_system_message_to_human=True
         )
         
         query_augmentation_chain = condense_prompt | condense_llm | StrOutputParser()
