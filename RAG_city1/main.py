@@ -174,18 +174,20 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"벡터 리트리버 검색 실패: Supabase RPC를 호출해 유사도 검색을 수행하는 도중 데이터베이스 예외가 발생했습니다. 상세 원인: {str(db_search_err)}")
 
     try:
-        # RAG 프롬프트 역시 SystemMessage가 생기지 않는 단일 텍스트로 변경
+        # 1. RAG 프롬프트를 SystemMessage가 생기지 않는 단일 텍스트(from_template)로 완전히 교체
         rag_prompt = ChatPromptTemplate.from_template(
             "너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n"
             "[문서 정보]\n{context}\n\n"
             "[사용자 질문]\n{question}"
         )
         
+        # 2. rag_llm 객체 수정 (안전장치로 convert_system_message_to_human도 추가)
         rag_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
-            temperature=0.2
+            temperature=0.2,
+            convert_system_message_to_human=True
         )
         
         rag_chain = rag_prompt | rag_llm | StrOutputParser()
