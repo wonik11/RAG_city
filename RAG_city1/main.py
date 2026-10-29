@@ -172,11 +172,12 @@ async def chat_endpoint(request: ChatRequest):
             "[사용자 질문]\n{question}"
         )
         
-        rag_llm = ChatGoogleGenerativeAI(
+       rag_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
-            temperature=0.2
+            temperature=0.2,
+            convert_system_message_to_human=True  # <-- 쉼표(,)와 함께 이 줄을 반드시 추가해 주세요!
         )
         
         rag_chain = rag_prompt | rag_llm | StrOutputParser()
