@@ -156,7 +156,7 @@ async def chat_endpoint(request: ChatRequest):
             augmented_query = request.query
 
     except Exception as aug_err:
-        raise HTTPException(status_code=500, detail=f"질의 확장(Query Augmentation) 실행 실패: LLM을 이용해 이전 대화 문맥을 분석하는 도중 에러가 발생했습니다. 상세 원인: {str(aug_err)}")
+        raise HTTPException(status_code=500, detail=f"🍎[새코드 테스트]🍎 질의 확장(Query Augmentation) 실행 실패: {str(aug_err)}")
 
     try:
         # 5. 증강된 질의로 벡터 DB 검색
