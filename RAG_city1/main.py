@@ -187,7 +187,8 @@ async def chat_endpoint(request: ChatRequest):
                 async for chunk in rag_chain.astream({"context": context_text, "question": augmented_query}):
                     yield chunk
             except Exception as stream_err:
-                yield f"\n\n[치명적 오류 발생: LLM 실시간 텍스트 생성 도중 네트워크 또는 API 에러가 반환되었습니다. 세부 로그: {str(stream_err)}]"
+                # 에러 메시지 앞에 사과 이모티콘과 테스트 문구를 추가합니다.
+                yield f"\n\n🍎[최신 코드 배포 성공!]🍎 에러 발생: {str(stream_err)}"
 
         return StreamingResponse(generate_stream(), media_type="text/event-stream")
 
