@@ -196,6 +196,10 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as rag_err:
         raise HTTPException(status_code=500, detail=f"최종 응답 파이프라인 구성 실패: {str(rag_err)}")
 
+@app.get("/")
+def read_root():
+    return {"message": "🍎[테스트] 드디어 최신 코드가 서버에 반영되었습니다!!!🍎"}
+
 # Cloud Run 배포를 위한 uvicorn 실행 블록
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
