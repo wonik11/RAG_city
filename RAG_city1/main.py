@@ -123,37 +123,33 @@ async def upload_pdf(file: UploadFile = File(...)):
 async def chat_endpoint(request: ChatRequest):
     """질의 확장 처리 후 Supabase 리트리버를 통해 관련 문서를 찾고 스트리밍 답변을 제공"""
     
-    # 2. 대화 기록(Chat History) 전달 객체 구성
-    history_messages = []
+    # 2. 대화 기록(Chat History)을 Langchain 객체가 아닌 '단순 문자열'로 변환 (에러 원천 차단)
+    history_text = ""
     for msg in request.chat_history:
-        if msg.get("role") == "user":
-            history_messages.append(HumanMessage(content=msg.get("content")))
-        elif msg.get("role") == "ai":
-            history_messages.append(AIMessage(content=msg.get("content")))
+        role = "사용자" if msg.get("role") == "user" else "AI"
+        history_text += f"{role}: {msg.get('content')}\n"
 
     try:
-        # 1. 시스템 메시지 및 프롬프트 설계 & 3. Query Augmentation Chain 구성
-        # 기존 ("system", ...)을 ("human", "[시스템 지시사항] ...")으로 변경
-        condense_prompt = ChatPromptTemplate.from_messages([
-            ("human", "[시스템 지시사항] 기존의 대화 내용을 활용하여 사용자가 질문한 의도를 파악해서 한문장의 명료한 질문으로 변환하라. 대명사나 이, 저, 그와 같은 표현을 명확한 명사로 표현하라."),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{query}")
-        ])
+        # 1. SystemMessage를 절대 생성하지 않는 단일 텍스트 프롬프트 방식 적용
+        condense_prompt = ChatPromptTemplate.from_template(
+            "기존의 대화 내용을 활용하여 사용자가 질문한 의도를 파악해서 한문장의 명료한 질문으로 변환하라. 대명사나 이, 저, 그와 같은 표현을 명확한 명사로 표현하라.\n\n"
+            "[대화 기록]\n{history_text}\n\n"
+            "[현재 질문]\n{query}"
+        )
         
-        # 질의 확장을 전담할 LLM 모델 객체 생성
         condense_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
-            temperature=0.0,
-            convert_system_message_to_human=True  # <-- 반드시 쉼표(,)와 함께 추가
+            temperature=0.0
+            # convert_system_message_to_human 옵션 자체를 쓸 필요가 없어짐
         )
         
         query_augmentation_chain = condense_prompt | condense_llm | StrOutputParser()
         
         # 4. 체인 실행
-        if history_messages:
+        if history_text.strip():
             augmented_query = query_augmentation_chain.invoke({
-                "chat_history": history_messages,
+                "history_text": history_text,
                 "query": request.query
             })
         else:
@@ -178,18 +174,18 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"벡터 리트리버 검색 실패: Supabase RPC를 호출해 유사도 검색을 수행하는 도중 데이터베이스 예외가 발생했습니다. 상세 원인: {str(db_search_err)}")
 
     try:
-       # 기존 ("system", ...)을 ("human", "[시스템 지시사항] ...")으로 변경
-        rag_prompt = ChatPromptTemplate.from_messages([
-            ("human", "[시스템 지시사항] 너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n[문서 정보]\n{context}"),
-            ("human", "{question}")
-        ])
+        # RAG 프롬프트 역시 SystemMessage가 생기지 않는 단일 텍스트로 변경
+        rag_prompt = ChatPromptTemplate.from_template(
+            "너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n"
+            "[문서 정보]\n{context}\n\n"
+            "[사용자 질문]\n{question}"
+        )
         
         rag_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
-            temperature=0.2,
-            convert_system_message_to_human=True  # <-- 반드시 쉼표(,)와 함께 추가
+            temperature=0.2
         )
         
         rag_chain = rag_prompt | rag_llm | StrOutputParser()
