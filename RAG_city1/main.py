@@ -133,8 +133,9 @@ async def chat_endpoint(request: ChatRequest):
 
     try:
         # 1. 시스템 메시지 및 프롬프트 설계 & 3. Query Augmentation Chain 구성
+        # 기존 ("system", ...) 에서 ("human", ...) 으로 변경
         condense_prompt = ChatPromptTemplate.from_messages([
-            ("system", "기존의 대화 내용을 활용하여 사용자가 질문한 의도를 파악해서 한문장의 명료한 질문으로 변환하라. 대명사나 이, 저, 그와 같은 표현을 명확한 명사로 표현하라."),
+            ("human", "[시스템 지시사항] 기존의 대화 내용을 활용하여 사용자가 질문한 의도를 파악해서 한문장의 명료한 질문으로 변환하라. 대명사나 이, 저, 그와 같은 표현을 명확한 명사로 표현하라."),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{query}")
         ])
@@ -177,8 +178,9 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"벡터 리트리버 검색 실패: Supabase RPC를 호출해 유사도 검색을 수행하는 도중 데이터베이스 예외가 발생했습니다. 상세 원인: {str(db_search_err)}")
 
     try:
+        # 기존 ("system", ...) 에서 ("human", ...) 으로 변경
         rag_prompt = ChatPromptTemplate.from_messages([
-            ("system", "너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n[문서 정보]\n{context}"),
+            ("human", "[시스템 지시사항] 너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n[문서 정보]\n{context}"),
             ("human", "{question}")
         ])
         
