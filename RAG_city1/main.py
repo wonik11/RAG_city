@@ -178,7 +178,7 @@ async def chat_endpoint(request: ChatRequest):
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
             temperature=0.2,
-            convert_system_message_to_human=True  # <-- 이 옵션을 꼭 추가!
+            convert_system_message_to_human=True
         )
         
         rag_chain = rag_prompt | rag_llm | StrOutputParser()
