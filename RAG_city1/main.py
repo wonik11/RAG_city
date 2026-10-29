@@ -85,18 +85,32 @@ async def upload_pdf(file: UploadFile = File(...)):
         )
         chunks = text_splitter.split_text(full_text)
         
-        # 오픈 AI 임베딩 모델을 사용하여 벡터로 변환 후 Supabase 벡터 DB에 삽입
-        for i, chunk in enumerate(chunks):
+        # --- [수정된 부분: 단건 처리 -> 배치(Batch) 처리로 통신 병목 해결] ---
+        
+        # 1. 225번 호출하던 임베딩 API를 embed_documents를 사용해 한 번의 호출로 일괄 변환
+        try:
+            embedding_vectors = embeddings.embed_documents(chunks)
+        except Exception as emb_err:
+            raise HTTPException(status_code=500, detail=f"임베딩 일괄 변환 실패: {str(emb_err)}")
+
+        # 2. Supabase에 Bulk Insert를 하기 위한 전체 데이터 리스트 구성
+        bulk_data = []
+        for i, (chunk, vector) in enumerate(zip(chunks, embedding_vectors)):
+            bulk_data.append({
+                "content": chunk,
+                "metadata": {"source": file.filename, "chunk_index": i},
+                "embedding": vector
+            })
+
+        # 3. 100개씩 묶어서(Batch) Supabase에 전송 (과부하 방지)
+        batch_size = 100
+        for i in range(0, len(bulk_data), batch_size):
+            batch = bulk_data[i : i + batch_size]
             try:
-                embedding_vector = embeddings.embed_query(chunk)
-                data = {
-                    "content": chunk,
-                    "metadata": {"source": file.filename, "chunk_index": i},
-                    "embedding": embedding_vector
-                }
-                supabase.table("document_chunks").insert(data).execute()
+                # insert()에 리스트(배열)를 전달하면 한 번의 통신으로 Bulk Insert가 실행됩니다.
+                supabase.table("document_chunks").insert(batch).execute()
             except Exception as db_err:
-                raise HTTPException(status_code=500, detail=f"임베딩 변환 및 DB 적재 실패 (청크 {i}/{len(chunks)}): Supabase에 벡터 데이터를 삽입하는 중 예외가 발생했습니다. 에러 로그: {str(db_err)}")
+                raise HTTPException(status_code=500, detail=f"Supabase 데이터 적재 실패 (청크 {i} ~ {i+len(batch)-1}): {str(db_err)}")
                 
         return {"status": "success", "message": f"총 {len(chunks)}개의 청크 조각이 안전하게 벡터 DB에 적재되었습니다."}
         
@@ -172,7 +186,7 @@ async def chat_endpoint(request: ChatRequest):
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
-            temperature=0.2
+            temperature=0.2,
             convert_system_message_to_human=True
         )
         
