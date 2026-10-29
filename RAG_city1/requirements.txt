@@ -8,3 +8,4 @@ langchain-google-genai
 supabase
 PyPDF2
 python-dotenv
+langchain-text-splitters
