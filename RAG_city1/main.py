@@ -11,12 +11,12 @@ from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 from supabase import create_client, Client
 
-# Langchain 컴포넌트
+# Langchain 컴포넌트 (최신 버전 호환용으로 수정)
 from langchain_openai import OpenAIEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # 로컬 개발 환경용 변수 로드
 load_dotenv()
