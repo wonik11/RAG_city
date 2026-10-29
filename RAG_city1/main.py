@@ -167,13 +167,13 @@ async def chat_endpoint(request: ChatRequest):
 
     try:
         # 3. RAG 프롬프트 역시 SystemMessage가 생기지 않는 단일 텍스트로 변경
-        rag_prompt = ChatPromptTemplate.from_template(
+rag_prompt = ChatPromptTemplate.from_template(
             "너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n"
             "[문서 정보]\n{context}\n\n"
             "[사용자 질문]\n{question}"
         )
         
-       rag_llm = ChatGoogleGenerativeAI(
+rag_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
@@ -181,7 +181,7 @@ async def chat_endpoint(request: ChatRequest):
             convert_system_message_to_human=True
         )
         
-        rag_chain = rag_prompt | rag_llm | StrOutputParser()
+rag_chain = rag_prompt | rag_llm | StrOutputParser()
         
         async def generate_stream():
             try:
