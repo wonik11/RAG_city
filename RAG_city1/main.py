@@ -143,8 +143,8 @@ async def chat_endpoint(request: ChatRequest):
         condense_llm = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
-            temperature=0.0
-            convert_system_message_to_human=True
+            temperature=0.0,
+            convert_system_message_to_human=True  # <-- 반드시 쉼표(,)와 함께 추가
         )
         
         query_augmentation_chain = condense_prompt | condense_llm | StrOutputParser()
@@ -187,7 +187,7 @@ async def chat_endpoint(request: ChatRequest):
             google_api_key=GOOGLE_API_KEY,
             streaming=True,
             temperature=0.2,
-            convert_system_message_to_human=True
+            convert_system_message_to_human=True  # <-- 반드시 쉼표(,)와 함께 추가
         )
         
         rag_chain = rag_prompt | rag_llm | StrOutputParser()
