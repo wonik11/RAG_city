@@ -134,7 +134,7 @@ async def chat_endpoint(request: ChatRequest):
             model="gemini-3.5-flash-lite",
             google_api_key=GOOGLE_API_KEY,
             temperature=0.0,
-            convert_system_message_to_human=True  # <-- 이 옵션을 꼭 추가!
+            convert_system_message_to_human=True
         )
         
         query_augmentation_chain = condense_prompt | condense_llm | StrOutputParser()
@@ -165,7 +165,7 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as db_search_err:
         raise HTTPException(status_code=500, detail=f"벡터 리트리버 검색 실패: {str(db_search_err)}")
 
-try:
+    try:
         # 3. RAG 프롬프트 역시 SystemMessage가 생기지 않는 단일 텍스트로 변경
         rag_prompt = ChatPromptTemplate.from_template(
             "너는 문서에 기반해 답변하는 도시 정책 전문가야. 다음 제공된 문서 정보를 바탕으로 사용자의 질문에 전문적으로 답변해. 문서에 없는 내용은 지어내지 마.\n\n"
@@ -194,25 +194,9 @@ try:
 
     except Exception as rag_err:
         raise HTTPException(status_code=500, detail=f"최종 응답 파이프라인 구성 실패: {str(rag_err)}")
-        
-        async def generate_stream():
-            try:
-                async for chunk in rag_chain.astream({"context": context_text, "question": augmented_query}):
-                    yield chunk
-            except Exception as stream_err:
-                # 에러 메시지 앞에 사과 이모티콘과 테스트 문구를 추가합니다.
-                yield f"\n\n🍎[최신 코드 배포 성공!]🍎 에러 발생: {str(stream_err)}"
-
-        return StreamingResponse(generate_stream(), media_type="text/event-stream")
-
-    except Exception as rag_err:
-        raise HTTPException(status_code=500, detail=f"최종 응답 파이프라인 구성 실패: {str(rag_err)}")
 
 @app.get("/")
 def read_root():
     return {"message": "🍎[테스트] 드디어 최신 코드가 서버에 반영되었습니다!!!🍎"}
 
-# Cloud Run 배포를 위한 uvicorn 실행 블록
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+# Cloud
