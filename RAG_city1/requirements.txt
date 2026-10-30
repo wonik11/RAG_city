@@ -10,3 +10,4 @@ langchain-text-splitters
 langchain-chroma
 PyPDF2
 python-dotenv
+langchain-classic
