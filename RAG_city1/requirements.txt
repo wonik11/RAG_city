@@ -10,4 +10,5 @@ langchain-text-splitters
 langchain-chroma
 langchain-text-splitters
 langchain-chroma
+langchain-community
 
