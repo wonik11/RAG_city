@@ -17,8 +17,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain.retrievers.multi_query import MultiQueryRetriever
-from langchain.docstore.document import Document
+from langchain_classic.retrievers.multi_query import MultiQueryRetriever
+from langchain_core.documents import Document
 
 # 로컬 개발 환경용 변수 로드
 load_dotenv()
