@@ -8,8 +8,4 @@ PyPDF2
 python-dotenv
 langchain-text-splitters
 langchain-chroma
-langchain-text-splitters
-langchain-chroma
 langchain-community
-langchain-classic
-
