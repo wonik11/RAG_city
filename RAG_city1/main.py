@@ -36,9 +36,9 @@ logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
 try:
     # 1. 구글 임베딩 모델 설정
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
-        google_api_key=GOOGLE_API_KEY
-    )
+    model="models/text-embedding-004",
+    google_api_key=GOOGLE_API_KEY
+)
     # 2. Chroma DB 초기화 (로컬 디렉토리 저장 방식)
     vector_db = Chroma(
         persist_directory="./chroma_db", 
