@@ -3,9 +3,8 @@ uvicorn
 pydantic
 python-multipart
 langchain
-langchain-openai
 langchain-google-genai
-supabase
 PyPDF2
 python-dotenv
 langchain-text-splitters
+langchain-chroma
