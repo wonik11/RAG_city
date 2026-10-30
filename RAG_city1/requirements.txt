@@ -2,10 +2,11 @@ fastapi
 uvicorn
 pydantic
 python-multipart
-langchain
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community>=0.2.0
 langchain-google-genai
-PyPDF2
-python-dotenv
 langchain-text-splitters
 langchain-chroma
-langchain-community
+PyPDF2
+python-dotenv
